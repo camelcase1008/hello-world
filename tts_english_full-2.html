@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>English TTS Practice</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{min-height:100vh;background:#F7F9FC;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;padding:24px 16px 80px;}
+    .header{max-width:780px;margin:0 auto 24px;}
+    .header-top{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+    .header-icon{width:36px;height:36px;background:#3B7DD8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+    h1{font-size:22px;font-weight:700;color:#111827;}
+    .subtitle{color:#6B7280;font-size:14px;margin-bottom:16px;}
+    .controls{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    .controls label{font-size:13px;color:#374151;font-weight:600;white-space:nowrap;}
+    .controls input[type=range]{flex:1;min-width:80px;accent-color:#3B7DD8;}
+    .rate-display{font-size:13px;font-weight:700;color:#3B7DD8;min-width:38px;text-align:right;}
+    .kr-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;font-weight:600;cursor:pointer;white-space:nowrap;}
+    .kr-toggle input{width:36px;height:20px;accent-color:#3B7DD8;cursor:pointer;}
+    .all-play-btn{display:flex;align-items:center;gap:7px;background:#3B7DD8;color:#fff;border:none;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+    .all-play-btn.playing{background:#1A56B0;}
+    #stop-btn{display:none;background:#FEE2E2;color:#DC2626;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+    .progress-bar-wrap{display:none;background:#E5E7EB;border-radius:4px;height:4px;margin-top:10px;overflow:hidden;}
+    .progress-bar-fill{height:4px;background:#3B7DD8;width:0%;transition:width 0.3s;border-radius:4px;}
+    .sections{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+    .card{background:#fff;border-radius:16px;border:1px solid #E5E7EB;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+    .card-header{padding:13px 16px 13px 20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .card-header-left{display:flex;align-items:baseline;gap:8px;}
+    .card-title{font-size:15px;font-weight:700;color:#111827;}
+    .card-sub{font-size:12px;color:#9CA3AF;font-weight:500;}
+    .section-play-btn{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#EBF1FB;color:#3B7DD8;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+    .section-play-btn.playing{background:#3B7DD8;color:#fff;}
+    .q-btn{width:100%;background:transparent;border:none;border-left:3px solid transparent;padding:13px 20px;text-align:left;cursor:pointer;display:flex;align-items:flex-start;gap:12px;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+    .q-btn:active{background:#F3F4F6;}
+    .q-btn.playing{background:#EBF1FB;border-left-color:#3B7DD8;}
+    .play-icon{flex-shrink:0;margin-top:2px;width:26px;height:26px;border-radius:50%;background:#3B7DD8;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;}
+    .q-btn.playing .play-icon{background:#1A56B0;}
+    .q-text{font-size:14px;line-height:1.65;color:#1F2937;text-align:left;}
+    .q-btn.playing .q-text{color:#1A56B0;font-weight:600;}
+    .footer{text-align:center;margin-top:40px;font-size:12px;color:#D1D5DB;}
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-icon">&#128266;</div>
+    <h1>English TTS Practice</h1>
+  </div>
+  <p class="subtitle">문장을 탭하면 영어로 읽어줍니다</p>
+  <div class="controls">
+    <label>속도</label>
+    <input type="range" id="rate" min="0.5" max="1.5" step="0.05" value="0.85"
+      oninput="document.getElementById('rd').textContent=parseFloat(this.value).toFixed(2)+'x'"/>
+    <span class="rate-display" id="rd">0.85x</span>
+    <label class="kr-toggle">
+      <input type="checkbox" id="kr-on" checked/> 한국어 먼저
+    </label>
+    <button class="all-play-btn" id="all-play-btn" onclick="playAll()">
+      <span id="all-icon">&#9654;</span> 전체재생
+    </button>
+    <button id="stop-btn" onclick="stopAll()">&#9646; 정지</button>
+  </div>
+  <div class="progress-bar-wrap" id="progress-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+</div>
+
+<div class="sections">
+<div class="card" id="card-s0">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">자유시간</span><span class="card-sub">Free Time</span></div>
+    <button class="section-play-btn" id="sp-s0" data-si="0" data-ids="[&quot;s0-q0&quot;, &quot;s0-q1&quot;, &quot;s0-q2&quot;]" data-title="자유시간" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s0-q0" onclick="speakOne('자유시간', 'Tell me about some places people in your country like to spend their free time.','s0-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about some places people in your country like to spend their free time.</span>
+  </button>
+  <button class="q-btn" id="s0-q1" onclick="speakOne('자유시간', 'Describe for me how your free time has changed over time.','s0-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe for me how your free time has changed over time.</span>
+  </button>
+  <button class="q-btn" id="s0-q2" onclick="speakOne('자유시간', 'Tell me about the last time you had some free time.','s0-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the last time you had some free time.</span>
+  </button>
+</div>
+<div class="card" id="card-s1">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">카페 가기</span><span class="card-sub">Café</span></div>
+    <button class="section-play-btn" id="sp-s1" data-si="1" data-ids="[&quot;s1-q0&quot;, &quot;s1-q1&quot;, &quot;s1-q2&quot;, &quot;s1-q3&quot;, &quot;s1-q4&quot;, &quot;s1-q5&quot;]" data-title="카페 가기" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s1-q0" onclick="speakOne('카페 가기', 'Tell me about the current trend of enjoying coffee where you live.','s1-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the current trend of enjoying coffee where you live.</span>
+  </button>
+  <button class="q-btn" id="s1-q1" onclick="speakOne('카페 가기', 'Describe your favorite coffee shop.','s1-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe your favorite coffee shop.</span>
+  </button>
+  <button class="q-btn" id="s1-q2" onclick="speakOne('카페 가기', 'When was the last time you went to a cafe?','s1-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When was the last time you went to a cafe?</span>
+  </button>
+  <button class="q-btn" id="s1-q3" onclick="speakOne('카페 가기', 'Tell me about how the coffee shops have changed over the years.','s1-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about how the coffee shops have changed over the years.</span>
+  </button>
+  <button class="q-btn" id="s1-q4" onclick="speakOne('카페 가기', 'Call the new cafe and ask 3 or 4 questions.','s1-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Call the new cafe and ask 3 or 4 questions.</span>
+  </button>
+  <button class="q-btn" id="s1-q5" onclick="speakOne('카페 가기', 'Explain the wrong order to the staff at a cafe and ask them to correct it.','s1-q5')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Explain the wrong order to the staff at a cafe and ask them to correct it.</span>
+  </button>
+</div>
+<div class="card" id="card-s2">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">영화 / TV 시청</span><span class="card-sub">Movies & TV</span></div>
+    <button class="section-play-btn" id="sp-s2" data-si="2" data-ids="[&quot;s2-q0&quot;, &quot;s2-q1&quot;, &quot;s2-q2&quot;, &quot;s2-q3&quot;, &quot;s2-q4&quot;]" data-title="영화 / TV 시청" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s2-q0" onclick="speakOne('영화 / TV 시청', 'Ask your friend three or four questions about the movie to see.','s2-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Ask your friend three or four questions about the movie to see.</span>
+  </button>
+  <button class="q-btn" id="s2-q1" onclick="speakOne('영화 / TV 시청', 'The movie is boring and you want to leave. Explain the problem to your friend and come up with two or three alternatives.','s2-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">The movie is boring and you want to leave. Explain the problem to your friend and come up with two or three alternatives.</span>
+  </button>
+  <button class="q-btn" id="s2-q2" onclick="speakOne('영화 / TV 시청', 'Have you ever tried to watch a boring movie? Tell me this experience.','s2-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Have you ever tried to watch a boring movie? Tell me this experience.</span>
+  </button>
+  <button class="q-btn" id="s2-q3" onclick="speakOne('영화 / TV 시청', 'Have you ever made plans for other things but had to cancel because of something that happened unexpectedly? Tell me everything about it.','s2-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Have you ever made plans for other things but had to cancel because of something that happened unexpectedly? Tell me everything about it.</span>
+  </button>
+  <button class="q-btn" id="s2-q4" onclick="speakOne('영화 / TV 시청', 'Tell me a specific story about your favorite actor that you heard about in the news.','s2-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me a specific story about your favorite actor that you heard about in the news.</span>
+  </button>
+</div>
+<div class="card" id="card-s3">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">기술 1 & 2</span><span class="card-sub">Technology</span></div>
+    <button class="section-play-btn" id="sp-s3" data-si="3" data-ids="[&quot;s3-q0&quot;, &quot;s3-q1&quot;, &quot;s3-q2&quot;, &quot;s3-q3&quot;, &quot;s3-q4&quot;, &quot;s3-q5&quot;, &quot;s3-q6&quot;, &quot;s3-q7&quot;]" data-title="기술 1 & 2" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s3-q0" onclick="speakOne('기술 1 & 2', 'Think about a specific modern appliance or device that people consider as useful or convenient.','s3-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Think about a specific modern appliance or device that people consider as useful or convenient.</span>
+  </button>
+  <button class="q-btn" id="s3-q1" onclick="speakOne('기술 1 & 2', 'Tell me about a time you learned about an exciting new product.','s3-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about a time you learned about an exciting new product.</span>
+  </button>
+  <button class="q-btn" id="s3-q2" onclick="speakOne('기술 1 & 2', 'Think about a time when you experienced a technology problem.','s3-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Think about a time when you experienced a technology problem.</span>
+  </button>
+  <button class="q-btn" id="s3-q3" onclick="speakOne('기술 1 & 2', 'How has that technology changed over time?','s3-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How has that technology changed over time?</span>
+  </button>
+  <button class="q-btn" id="s3-q4" onclick="speakOne('기술 1 & 2', 'How have these technology changes affected your daily tasks or improve your professional skills?','s3-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How have these technology changes affected your daily tasks or improve your professional skills?</span>
+  </button>
+  <button class="q-btn" id="s3-q5" onclick="speakOne('기술 1 & 2', 'Pick one industry in your country and tell me all about it.','s3-q5')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Pick one industry in your country and tell me all about it.</span>
+  </button>
+  <button class="q-btn" id="s3-q6" onclick="speakOne('기술 1 & 2', 'You are writing a report on the technology industry. Call your friend and ask three or four questions.','s3-q6')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You are writing a report on the technology industry. Call your friend and ask three or four questions.</span>
+  </button>
+  <button class="q-btn" id="s3-q7" onclick="speakOne('기술 1 & 2', 'Tell me about a technology issue.','s3-q7')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about a technology issue.</span>
+  </button>
+</div>
+<div class="card" id="card-s4">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">날씨</span><span class="card-sub">Weather</span></div>
+    <button class="section-play-btn" id="sp-s4" data-si="4" data-ids="[&quot;s4-q0&quot;, &quot;s4-q1&quot;, &quot;s4-q2&quot;]" data-title="날씨" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s4-q0" onclick="speakOne('날씨', 'Tell me about the weather at where you are today.','s4-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the weather at where you are today.</span>
+  </button>
+  <button class="q-btn" id="s4-q1" onclick="speakOne('날씨', 'How has the weather in your country changed over time?','s4-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How has the weather in your country changed over time?</span>
+  </button>
+  <button class="q-btn" id="s4-q2" onclick="speakOne('날씨', 'Tell me about an experience you had when severe weather created some kind of problems.','s4-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about an experience you had when severe weather created some kind of problems.</span>
+  </button>
+</div>
+<div class="card" id="card-s5">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">식품</span><span class="card-sub">Food</span></div>
+    <button class="section-play-btn" id="sp-s5" data-si="5" data-ids="[&quot;s5-q0&quot;, &quot;s5-q1&quot;, &quot;s5-q2&quot;, &quot;s5-q3&quot;, &quot;s5-q4&quot;]" data-title="식품" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s5-q0" onclick="speakOne('식품', 'Describe in detail how you started to eat healthy.','s5-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe in detail how you started to eat healthy.</span>
+  </button>
+  <button class="q-btn" id="s5-q1" onclick="speakOne('식품', 'After purchasing a food item at the store, you have discovered that something is wrong with the item. Call the store and explain the problem.','s5-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">After purchasing a food item at the store, you have discovered that something is wrong with the item. Call the store and explain the problem.</span>
+  </button>
+  <button class="q-btn" id="s5-q2" onclick="speakOne('식품', 'When was the last time you had some healthy food?','s5-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When was the last time you had some healthy food?</span>
+  </button>
+  <button class="q-btn" id="s5-q3" onclick="speakOne('식품', 'How has food shopping changed over the last 20 years?','s5-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How has food shopping changed over the last 20 years?</span>
+  </button>
+  <button class="q-btn" id="s5-q4" onclick="speakOne('식품', 'Tell me about the food scare stories you heard about or read about.','s5-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the food scare stories you heard about or read about.</span>
+  </button>
+</div>
+<div class="card" id="card-s6">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">건강</span><span class="card-sub">Health</span></div>
+    <button class="section-play-btn" id="sp-s6" data-si="6" data-ids="[&quot;s6-q0&quot;, &quot;s6-q1&quot;, &quot;s6-q2&quot;]" data-title="건강" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s6-q0" onclick="speakOne('건강', 'Tell me about something you have done to try to improve your health.','s6-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about something you have done to try to improve your health.</span>
+  </button>
+  <button class="q-btn" id="s6-q1" onclick="speakOne('건강', 'Different generations have different views on what is healthy.','s6-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Different generations have different views on what is healthy.</span>
+  </button>
+  <button class="q-btn" id="s6-q2" onclick="speakOne('건강', 'Describe a recent event in your area that involved health issues.','s6-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe a recent event in your area that involved health issues.</span>
+  </button>
+</div>
+<div class="card" id="card-s7">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">예약</span><span class="card-sub">Appointments</span></div>
+    <button class="section-play-btn" id="sp-s7" data-si="7" data-ids="[&quot;s7-q0&quot;, &quot;s7-q1&quot;, &quot;s7-q2&quot;, &quot;s7-q3&quot;]" data-title="예약" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s7-q0" onclick="speakOne('예약', 'Tell me about the kinds of places you go for different appointments.','s7-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the kinds of places you go for different appointments.</span>
+  </button>
+  <button class="q-btn" id="s7-q1" onclick="speakOne('예약', 'Tell me about an appointment that you remember for some reason.','s7-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about an appointment that you remember for some reason.</span>
+  </button>
+  <button class="q-btn" id="s7-q2" onclick="speakOne('예약', 'Call the doctor\'s office and ask three or four questions.','s7-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Call the doctor's office and ask three or four questions.</span>
+  </button>
+  <button class="q-btn" id="s7-q3" onclick="speakOne('예약', 'Call and reschedule your appointment at the clinic.','s7-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Call and reschedule your appointment at the clinic.</span>
+  </button>
+</div>
+<div class="card" id="card-s8">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">패션 / 쇼핑</span><span class="card-sub">Fashion & Shopping</span></div>
+    <button class="section-play-btn" id="sp-s8" data-si="8" data-ids="[&quot;s8-q0&quot;, &quot;s8-q1&quot;, &quot;s8-q2&quot;, &quot;s8-q3&quot;, &quot;s8-q4&quot;]" data-title="패션 / 쇼핑" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s8-q0" onclick="speakOne('패션 / 쇼핑', 'Call the customer service department of the mall and complain about the late delivery.','s8-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Call the customer service department of the mall and complain about the late delivery.</span>
+  </button>
+  <button class="q-btn" id="s8-q1" onclick="speakOne('패션 / 쇼핑', 'Tell me about the kinds of clothes that were popular when you were younger. How are they different from what is popular now?','s8-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the kinds of clothes that were popular when you were younger. How are they different from what is popular now?</span>
+  </button>
+  <button class="q-btn" id="s8-q2" onclick="speakOne('패션 / 쇼핑', 'Did anything funny or exciting happen while you were shopping?','s8-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Did anything funny or exciting happen while you were shopping?</span>
+  </button>
+  <button class="q-btn" id="s8-q3" onclick="speakOne('패션 / 쇼핑', 'Talk about the most significant changes in shopping over the years.','s8-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Talk about the most significant changes in shopping over the years.</span>
+  </button>
+  <button class="q-btn" id="s8-q4" onclick="speakOne('패션 / 쇼핑', 'What kinds of products and services do you hear shoppers talk about the most these days?','s8-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">What kinds of products and services do you hear shoppers talk about the most these days?</span>
+  </button>
+</div>
+<div class="card" id="card-s9">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">신문 / 블로그</span><span class="card-sub">News & Blogs</span></div>
+    <button class="section-play-btn" id="sp-s9" data-si="9" data-ids="[&quot;s9-q0&quot;, &quot;s9-q1&quot;, &quot;s9-q2&quot;]" data-title="신문 / 블로그" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s9-q0" onclick="speakOne('신문 / 블로그', 'Tell me about a recent news article you read. What was it about?','s9-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about a recent news article you read. What was it about?</span>
+  </button>
+  <button class="q-btn" id="s9-q1" onclick="speakOne('신문 / 블로그', 'How has the newspaper changed over the years?','s9-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How has the newspaper changed over the years?</span>
+  </button>
+  <button class="q-btn" id="s9-q2" onclick="speakOne('신문 / 블로그', 'What do you think is the main difference between SNS and blogs? Can you explain with examples?','s9-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">What do you think is the main difference between SNS and blogs? Can you explain with examples?</span>
+  </button>
+</div>
+<div class="card" id="card-s10">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">인터넷</span><span class="card-sub">Internet</span></div>
+    <button class="section-play-btn" id="sp-s10" data-si="10" data-ids="[&quot;s10-q0&quot;, &quot;s10-q1&quot;, &quot;s10-q2&quot;, &quot;s10-q3&quot;, &quot;s10-q4&quot;]" data-title="인터넷" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s10-q0" onclick="speakOne('인터넷', 'When did you first become interested in surfing the Internet?','s10-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When did you first become interested in surfing the Internet?</span>
+  </button>
+  <button class="q-btn" id="s10-q1" onclick="speakOne('인터넷', 'You have tried to check out that website, but it is not available. Call your friend, explain the situation and make some suggestions to solve the problem.','s10-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You have tried to check out that website, but it is not available. Call your friend, explain the situation and make some suggestions to solve the problem.</span>
+  </button>
+  <button class="q-btn" id="s10-q2" onclick="speakOne('인터넷', 'Have you ever had any trouble on the Internet?','s10-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Have you ever had any trouble on the Internet?</span>
+  </button>
+  <button class="q-btn" id="s10-q3" onclick="speakOne('인터넷', 'How have social networking services changed the way you use the Internet? Do you think they have a big impact on your life?','s10-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How have social networking services changed the way you use the Internet? Do you think they have a big impact on your life?</span>
+  </button>
+  <button class="q-btn" id="s10-q4" onclick="speakOne('인터넷', 'How did you use the Internet to get a project done in the past?','s10-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How did you use the Internet to get a project done in the past?</span>
+  </button>
+</div>
+<div class="card" id="card-s11">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">은행</span><span class="card-sub">Banking</span></div>
+    <button class="section-play-btn" id="sp-s11" data-si="11" data-ids="[&quot;s11-q0&quot;, &quot;s11-q1&quot;, &quot;s11-q2&quot;, &quot;s11-q3&quot;, &quot;s11-q4&quot;]" data-title="은행" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s11-q0" onclick="speakOne('은행', 'Tell me about the banks in your country.','s11-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the banks in your country.</span>
+  </button>
+  <button class="q-btn" id="s11-q1" onclick="speakOne('은행', 'Talk about a problem you personally had at a bank.','s11-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Talk about a problem you personally had at a bank.</span>
+  </button>
+  <button class="q-btn" id="s11-q2" onclick="speakOne('은행', 'You need to open a new bank account. Call the bank and ask the teller three or four questions.','s11-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You need to open a new bank account. Call the bank and ask the teller three or four questions.</span>
+  </button>
+  <button class="q-btn" id="s11-q3" onclick="speakOne('은행', 'I just got my credit card, but found out that there is a problem with it. Call the bank.','s11-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">I just got my credit card, but found out that there is a problem with it. Call the bank.</span>
+  </button>
+  <button class="q-btn" id="s11-q4" onclick="speakOne('은행', 'Tell me about a bank you remember from your childhood. How was it different from banks today?','s11-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about a bank you remember from your childhood. How was it different from banks today?</span>
+  </button>
+</div>
+<div class="card" id="card-s12">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">재활용</span><span class="card-sub">Recycling</span></div>
+    <button class="section-play-btn" id="sp-s12" data-si="12" data-ids="[&quot;s12-q0&quot;, &quot;s12-q1&quot;, &quot;s12-q2&quot;, &quot;s12-q3&quot;, &quot;s12-q4&quot;]" data-title="재활용" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s12-q0" onclick="speakOne('재활용', 'I\'d like to know about how recycling is practiced in your country. What do people specifically do? Tell me how things are recycled.','s12-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">I'd like to know about how recycling is practiced in your country. What do people specifically do? Tell me how things are recycled.</span>
+  </button>
+  <button class="q-btn" id="s12-q1" onclick="speakOne('재활용', 'Describe what the attitude was toward recycling when you were a child. Did people recycle then? What were people\'s views on recycling at that time and how have they changed over the years?','s12-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe what the attitude was toward recycling when you were a child. Did people recycle then? What were people's views on recycling at that time and how have they changed over the years?</span>
+  </button>
+  <button class="q-btn" id="s12-q2" onclick="speakOne('재활용', 'What recent news have you heard about recycling or environmental conservation efforts? How do you think these developments will impact your community?','s12-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">What recent news have you heard about recycling or environmental conservation efforts? How do you think these developments will impact your community?</span>
+  </button>
+  <button class="q-btn" id="s12-q3" onclick="speakOne('재활용', 'Suppose that you have moved into a new building. Call the manager of the building and ask three or four questions about recycling.','s12-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Suppose that you have moved into a new building. Call the manager of the building and ask three or four questions about recycling.</span>
+  </button>
+  <button class="q-btn" id="s12-q4" onclick="speakOne('재활용', 'Describe a specific time in which you had trouble with recycling. Describe what happened from beginning to end.','s12-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe a specific time in which you had trouble with recycling. Describe what happened from beginning to end.</span>
+  </button>
+</div>
+<div class="card" id="card-s13">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">집</span><span class="card-sub">Home</span></div>
+    <button class="section-play-btn" id="sp-s13" data-si="13" data-ids="[&quot;s13-q0&quot;, &quot;s13-q1&quot;, &quot;s13-q2&quot;, &quot;s13-q3&quot;, &quot;s13-q4&quot;, &quot;s13-q5&quot;, &quot;s13-q6&quot;]" data-title="집" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s13-q0" onclick="speakOne('집', 'Talk about your favorite room in your home. Why do you like that room? What do you normally do there?','s13-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Talk about your favorite room in your home. Why do you like that room? What do you normally do there?</span>
+  </button>
+  <button class="q-btn" id="s13-q1" onclick="speakOne('집', 'Tell me about the house you used to live in when you were young. What are the differences and the similarities? Give me all the details.','s13-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the house you used to live in when you were young. What are the differences and the similarities? Give me all the details.</span>
+  </button>
+  <button class="q-btn" id="s13-q2" onclick="speakOne('집', 'Think about one of your past home improvement projects. Why did you do that project? How did your home look before and after? Talk about the entire process.','s13-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Think about one of your past home improvement projects. Why did you do that project? How did your home look before and after? Talk about the entire process.</span>
+  </button>
+  <button class="q-btn" id="s13-q3" onclick="speakOne('집', 'Someone in your family is going on a vacation, and you have agreed to take care of their responsibilities at home. Call your relative and ask three or four questions to get all the information you need.','s13-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Someone in your family is going on a vacation, and you have agreed to take care of their responsibilities at home. Call your relative and ask three or four questions to get all the information you need.</span>
+  </button>
+  <button class="q-btn" id="s13-q4" onclick="speakOne('집', 'When you arrive at your relative\'s house, the door is locked and the key is not where it is supposed to be. Call your relative\'s hotel and leave a message explaining the situation. Give two or three options to resolve the problem.','s13-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When you arrive at your relative's house, the door is locked and the key is not where it is supposed to be. Call your relative's hotel and leave a message explaining the situation. Give two or three options to resolve the problem.</span>
+  </button>
+  <button class="q-btn" id="s13-q5" onclick="speakOne('집', 'There are always problems which happen in any home. Tell me about some problems or issues that have happened in your home.','s13-q5')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">There are always problems which happen in any home. Tell me about some problems or issues that have happened in your home.</span>
+  </button>
+  <button class="q-btn" id="s13-q6" onclick="speakOne('집', 'Many homes today are equipped with new appliances or electronic devices. What are some of these? How have they changed household responsibilities?','s13-q6')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Many homes today are equipped with new appliances or electronic devices. What are some of these? How have they changed household responsibilities?</span>
+  </button>
+</div>
+<div class="card" id="card-s14">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">가족 / 휴일</span><span class="card-sub">Family & Holidays</span></div>
+    <button class="section-play-btn" id="sp-s14" data-si="14" data-ids="[&quot;s14-q0&quot;, &quot;s14-q1&quot;, &quot;s14-q2&quot;, &quot;s14-q3&quot;]" data-title="가족 / 휴일" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s14-q0" onclick="speakOne('가족 / 휴일', 'Describe two different friends or family members in detail. Tell me about the similarities they have in common and the differences between them.','s14-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe two different friends or family members in detail. Tell me about the similarities they have in common and the differences between them.</span>
+  </button>
+  <button class="q-btn" id="s14-q1" onclick="speakOne('가족 / 휴일', 'Talk about a time when you visited a friend or a family member. What was memorable about that visit? Tell me everything from beginning to end.','s14-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Talk about a time when you visited a friend or a family member. What was memorable about that visit? Tell me everything from beginning to end.</span>
+  </button>
+  <button class="q-btn" id="s14-q2" onclick="speakOne('가족 / 휴일', 'Tell me about the last gathering or celebration you attended. When and where was it, and who was there? What made it memorable?','s14-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the last gathering or celebration you attended. When and where was it, and who was there? What made it memorable?</span>
+  </button>
+  <button class="q-btn" id="s14-q3" onclick="speakOne('가족 / 휴일', 'When you get together with friends or family, what are some of the topics or interests you discuss? How do these things affect your life?','s14-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When you get together with friends or family, what are some of the topics or interests you discuss? How do these things affect your life?</span>
+  </button>
+</div>
+<div class="card" id="card-s15">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">파티</span><span class="card-sub">Parties</span></div>
+    <button class="section-play-btn" id="sp-s15" data-si="15" data-ids="[&quot;s15-q0&quot;, &quot;s15-q1&quot;, &quot;s15-q2&quot;]" data-title="파티" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s15-q0" onclick="speakOne('파티', 'You have been invited to a holiday party. Call your friend and ask when the party starts and what you should bring. Ask two or three more questions about the party.','s15-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You have been invited to a holiday party. Call your friend and ask when the party starts and what you should bring. Ask two or three more questions about the party.</span>
+  </button>
+  <button class="q-btn" id="s15-q1" onclick="speakOne('파티', 'You just had a car accident and you think you are going to be late for the holiday party. Call your friend, explain the situation, and give two or three alternatives.','s15-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You just had a car accident and you think you are going to be late for the holiday party. Call your friend, explain the situation, and give two or three alternatives.</span>
+  </button>
+  <button class="q-btn" id="s15-q2" onclick="speakOne('파티', 'Tell me about a time when you really wanted to go to a party or a celebration, but for some reason you could not go. Tell me the whole story from beginning to end.','s15-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about a time when you really wanted to go to a party or a celebration, but for some reason you could not go. Tell me the whole story from beginning to end.</span>
+  </button>
+</div>
+<div class="card" id="card-s16">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">약속</span><span class="card-sub">Plans & Meetups</span></div>
+    <button class="section-play-btn" id="sp-s16" data-si="16" data-ids="[&quot;s16-q0&quot;, &quot;s16-q1&quot;]" data-title="약속" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s16-q0" onclick="speakOne('약속', 'You want to meet up with your friend on the weekend. Call your friend and ask two or three questions about what you can do together and when you want to meet.','s16-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You want to meet up with your friend on the weekend. Call your friend and ask two or three questions about what you can do together and when you want to meet.</span>
+  </button>
+  <button class="q-btn" id="s16-q1" onclick="speakOne('약속', 'You are unable to meet your friend at the time and place that was agreed upon. Call your friend and give three or four alternatives to address the problem.','s16-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You are unable to meet your friend at the time and place that was agreed upon. Call your friend and give three or four alternatives to address the problem.</span>
+  </button>
+</div>
+<div class="card" id="card-s17">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">교통</span><span class="card-sub">Transportation</span></div>
+    <button class="section-play-btn" id="sp-s17" data-si="17" data-ids="[&quot;s17-q0&quot;, &quot;s17-q1&quot;, &quot;s17-q2&quot;, &quot;s17-q3&quot;]" data-title="교통" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s17-q0" onclick="speakOne('교통', 'Tell me about how people typically get around in your country. Do people drive or use trains or buses?','s17-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about how people typically get around in your country. Do people drive or use trains or buses?</span>
+  </button>
+  <button class="q-btn" id="s17-q1" onclick="speakOne('교통', 'Tell me about a transportation problem that you once faced. Tell me everything that happened and what you did to deal with it.','s17-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about a transportation problem that you once faced. Tell me everything that happened and what you did to deal with it.</span>
+  </button>
+  <button class="q-btn" id="s17-q2" onclick="speakOne('교통', 'What progress have you seen in the public transportation system and how is it affecting people\'s lives?','s17-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">What progress have you seen in the public transportation system and how is it affecting people's lives?</span>
+  </button>
+  <button class="q-btn" id="s17-q3" onclick="speakOne('교통', 'You are driving your car and have car trouble. Go to the nearest service station and ask three or four questions to get your car fixed.','s17-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You are driving your car and have car trouble. Go to the nearest service station and ask three or four questions to get your car fixed.</span>
+  </button>
+</div>
+<div class="card" id="card-s18">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">렌터카</span><span class="card-sub">Car Rental</span></div>
+    <button class="section-play-btn" id="sp-s18" data-si="18" data-ids="[&quot;s18-q0&quot;, &quot;s18-q1&quot;]" data-title="렌터카" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s18-q0" onclick="speakOne('렌터카', 'You need to rent a car for about a week. Call the rental agency and ask three or four questions to get all the information you need.','s18-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You need to rent a car for about a week. Call the rental agency and ask three or four questions to get all the information you need.</span>
+  </button>
+  <button class="q-btn" id="s18-q1" onclick="speakOne('렌터카', 'You want to rent a specific kind of car, but none are available. Call the manager, explain the situation, and offer several alternatives to solve the problem.','s18-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You want to rent a specific kind of car, but none are available. Call the manager, explain the situation, and offer several alternatives to solve the problem.</span>
+  </button>
+</div>
+<div class="card" id="card-s19">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">여행</span><span class="card-sub">Travel</span></div>
+    <button class="section-play-btn" id="sp-s19" data-si="19" data-ids="[&quot;s19-q0&quot;, &quot;s19-q1&quot;, &quot;s19-q2&quot;, &quot;s19-q3&quot;, &quot;s19-q4&quot;, &quot;s19-q5&quot;, &quot;s19-q6&quot;, &quot;s19-q7&quot;, &quot;s19-q8&quot;, &quot;s19-q9&quot;]" data-title="여행" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s19-q0" onclick="speakOne('여행', 'What is the most memorable tourist attraction in your country or city? Why is it so unforgettable?','s19-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">What is the most memorable tourist attraction in your country or city? Why is it so unforgettable?</span>
+  </button>
+  <button class="q-btn" id="s19-q1" onclick="speakOne('여행', 'Tell me about some of the trips that you took in your youth. Where did you go?','s19-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about some of the trips that you took in your youth. Where did you go?</span>
+  </button>
+  <button class="q-btn" id="s19-q2" onclick="speakOne('여행', 'Can you describe one of the countries or cities you have visited internationally? What does it look like and what are the people like?','s19-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Can you describe one of the countries or cities you have visited internationally? What does it look like and what are the people like?</span>
+  </button>
+  <button class="q-btn" id="s19-q3" onclick="speakOne('여행', 'Think about a time when your travel plans did not work out as expected. What happened and how was the situation resolved?','s19-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Think about a time when your travel plans did not work out as expected. What happened and how was the situation resolved?</span>
+  </button>
+  <button class="q-btn" id="s19-q4" onclick="speakOne('여행', 'Have you ever bought tickets or made reservations but something went wrong? Tell me about that experience.','s19-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Have you ever bought tickets or made reservations but something went wrong? Tell me about that experience.</span>
+  </button>
+  <button class="q-btn" id="s19-q5" onclick="speakOne('여행', 'How has traveling to other countries changed over the years? Is it easier or more difficult than before?','s19-q5')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How has traveling to other countries changed over the years? Is it easier or more difficult than before?</span>
+  </button>
+  <button class="q-btn" id="s19-q6" onclick="speakOne('여행', 'International travel has changed significantly. How was traveling abroad in the past compared to today? What are the reasons it has become more accessible?','s19-q6')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">International travel has changed significantly. How was traveling abroad in the past compared to today? What are the reasons it has become more accessible?</span>
+  </button>
+  <button class="q-btn" id="s19-q7" onclick="speakOne('여행', 'Why has traveling abroad become so popular? What do people hope to gain or experience when they visit a foreign country?','s19-q7')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Why has traveling abroad become so popular? What do people hope to gain or experience when they visit a foreign country?</span>
+  </button>
+  <button class="q-btn" id="s19-q8" onclick="speakOne('여행', 'You have booked a non-refundable plane ticket but something has happened that prevents you from going. Call the travel agent and offer some alternatives.','s19-q8')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You have booked a non-refundable plane ticket but something has happened that prevents you from going. Call the travel agent and offer some alternatives.</span>
+  </button>
+  <button class="q-btn" id="s19-q9" onclick="speakOne('여행', 'The travel agent informs you that the vacation you want is not available for the dates you want. Call your friend, leave a message explaining the situation and offer two or three alternatives.','s19-q9')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">The travel agent informs you that the vacation you want is not available for the dates you want. Call your friend, leave a message explaining the situation and offer two or three alternatives.</span>
+  </button>
+</div>
+<div class="card" id="card-s20">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">모임</span><span class="card-sub">Gatherings & Events</span></div>
+    <button class="section-play-btn" id="sp-s20" data-si="20" data-ids="[&quot;s20-q0&quot;, &quot;s20-q1&quot;, &quot;s20-q2&quot;, &quot;s20-q3&quot;, &quot;s20-q4&quot;]" data-title="모임" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s20-q0" onclick="speakOne('모임', 'Tell me about the last gathering or celebration you attended. When and where was it, and what made it memorable?','s20-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the last gathering or celebration you attended. When and where was it, and what made it memorable?</span>
+  </button>
+  <button class="q-btn" id="s20-q1" onclick="speakOne('모임', 'Have you ever had an unexpected or memorable experience during a celebration? Tell me everything that happened from beginning to end.','s20-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Have you ever had an unexpected or memorable experience during a celebration? Tell me everything that happened from beginning to end.</span>
+  </button>
+  <button class="q-btn" id="s20-q2" onclick="speakOne('모임', 'How have celebrations and gatherings changed since you were a child? What events are more popular today?','s20-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How have celebrations and gatherings changed since you were a child? What events are more popular today?</span>
+  </button>
+  <button class="q-btn" id="s20-q3" onclick="speakOne('모임', 'Tell me about some similarities and differences between celebrations in small towns and in big cities in your country.','s20-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about some similarities and differences between celebrations in small towns and in big cities in your country.</span>
+  </button>
+  <button class="q-btn" id="s20-q4" onclick="speakOne('모임', 'Was there a discussion among people related to organizing an event recently? What was the issue or difficulty being discussed?','s20-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Was there a discussion among people related to organizing an event recently? What was the issue or difficulty being discussed?</span>
+  </button>
+</div>
+<div class="card" id="card-s21">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">음식점</span><span class="card-sub">Restaurants</span></div>
+    <button class="section-play-btn" id="sp-s21" data-si="21" data-ids="[&quot;s21-q0&quot;, &quot;s21-q1&quot;, &quot;s21-q2&quot;, &quot;s21-q3&quot;, &quot;s21-q4&quot;]" data-title="음식점" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s21-q0" onclick="speakOne('음식점', 'Describe your favorite restaurant that has an ethnic or international menu. Tell me everything about it in detail.','s21-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe your favorite restaurant that has an ethnic or international menu. Tell me everything about it in detail.</span>
+  </button>
+  <button class="q-btn" id="s21-q1" onclick="speakOne('음식점', 'When was the last time you ate at a restaurant with an international menu? Tell me the entire story of that visit.','s21-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When was the last time you ate at a restaurant with an international menu? Tell me the entire story of that visit.</span>
+  </button>
+  <button class="q-btn" id="s21-q2" onclick="speakOne('음식점', 'Tell me about a memorable meal you had with family, friends, or co-workers. Who were you with and what did you eat?','s21-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about a memorable meal you had with family, friends, or co-workers. Who were you with and what did you eat?</span>
+  </button>
+  <button class="q-btn" id="s21-q3" onclick="speakOne('음식점', 'Talk about your experience at a chain restaurant and a local restaurant. What was the biggest difference?','s21-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Talk about your experience at a chain restaurant and a local restaurant. What was the biggest difference?</span>
+  </button>
+  <button class="q-btn" id="s21-q4" onclick="speakOne('음식점', 'Tell me about an unexpected experience you had at a restaurant. Tell me everything about the incident.','s21-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about an unexpected experience you had at a restaurant. Tell me everything about the incident.</span>
+  </button>
+</div>
+<div class="card" id="card-s22">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">집에서 보내는 휴가</span><span class="card-sub">Staycation</span></div>
+    <button class="section-play-btn" id="sp-s22" data-si="22" data-ids="[&quot;s22-q0&quot;, &quot;s22-q1&quot;, &quot;s22-q2&quot;, &quot;s22-q3&quot;, &quot;s22-q4&quot;]" data-title="집에서 보내는 휴가" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s22-q0" onclick="speakOne('집에서 보내는 휴가', 'You indicated in the survey that you stay at home for vacations. Who are the people you would like to see and spend time with on your vacation?','s22-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">You indicated in the survey that you stay at home for vacations. Who are the people you would like to see and spend time with on your vacation?</span>
+  </button>
+  <button class="q-btn" id="s22-q1" onclick="speakOne('집에서 보내는 휴가', 'Describe some of the things that you would like to do with people you visit or see during your vacation.','s22-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Describe some of the things that you would like to do with people you visit or see during your vacation.</span>
+  </button>
+  <button class="q-btn" id="s22-q2" onclick="speakOne('집에서 보내는 휴가', 'Could you tell me about an unusual, unexpected, or satisfying experience you had while at home on vacation? Tell me all the details. What happened? Who was involved? And why was this experience so memorable?','s22-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Could you tell me about an unusual, unexpected, or satisfying experience you had while at home on vacation? Tell me all the details. What happened? Who was involved? And why was this experience so memorable?</span>
+  </button>
+  <button class="q-btn" id="s22-q3" onclick="speakOne('집에서 보내는 휴가', 'How do most people spend their vacation in your country? How does that compare to the way people spent their vacation when you were growing up? How have things changed and why?','s22-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How do most people spend their vacation in your country? How does that compare to the way people spent their vacation when you were growing up? How have things changed and why?</span>
+  </button>
+  <button class="q-btn" id="s22-q4" onclick="speakOne('집에서 보내는 휴가', 'Experts state that vacations are important for every individual. Report for me the important benefits of vacation time to a person\'s health, relationships and personal growth.','s22-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Experts state that vacations are important for every individual. Report for me the important benefits of vacation time to a person's health, relationships and personal growth.</span>
+  </button>
+</div>
+<div class="card" id="card-s23">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">지형 / 하이킹</span><span class="card-sub">Geography & Hiking</span></div>
+    <button class="section-play-btn" id="sp-s23" data-si="23" data-ids="[&quot;s23-q0&quot;, &quot;s23-q1&quot;, &quot;s23-q2&quot;, &quot;s23-q3&quot;, &quot;s23-q4&quot;]" data-title="지형 / 하이킹" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s23-q0" onclick="speakOne('지형 / 하이킹', 'Could you tell me about the geographical features of your country? Are there many mountains or beaches? Please explain in as much detail as you can.','s23-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Could you tell me about the geographical features of your country? Are there many mountains or beaches? Please explain in as much detail as you can.</span>
+  </button>
+  <button class="q-btn" id="s23-q1" onclick="speakOne('지형 / 하이킹', 'Have you ever been to a geographically unique area in your country? Where was it? What did the place look like? What did you see there?','s23-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Have you ever been to a geographically unique area in your country? Where was it? What did the place look like? What did you see there?</span>
+  </button>
+  <button class="q-btn" id="s23-q2" onclick="speakOne('지형 / 하이킹', 'People often have memorable and moving experiences when they explore their country\'s geography. Tell me the story of a memorable time you had while visiting a natural place in your country.','s23-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">People often have memorable and moving experiences when they explore their country's geography. Tell me the story of a memorable time you had while visiting a natural place in your country.</span>
+  </button>
+  <button class="q-btn" id="s23-q3" onclick="speakOne('지형 / 하이킹', 'How has your country changed in the past decade? Choose one area of change and provide a lot of details about urban development, tourism, or any other area.','s23-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">How has your country changed in the past decade? Choose one area of change and provide a lot of details about urban development, tourism, or any other area.</span>
+  </button>
+  <button class="q-btn" id="s23-q4" onclick="speakOne('지형 / 하이킹', 'Tell me in detail about changes you have observed concerning the relationship between your country and other countries. The change might be related to the economy, sports, arts, culture or politics.','s23-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me in detail about changes you have observed concerning the relationship between your country and other countries. The change might be related to the economy, sports, arts, culture or politics.</span>
+  </button>
+</div>
+<div class="card" id="card-s24">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">호텔</span><span class="card-sub">Hotels</span></div>
+    <button class="section-play-btn" id="sp-s24" data-si="24" data-ids="[&quot;s24-q0&quot;, &quot;s24-q1&quot;, &quot;s24-q2&quot;, &quot;s24-q3&quot;, &quot;s24-q4&quot;, &quot;s24-q5&quot;, &quot;s24-q6&quot;]" data-title="호텔" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s24-q0" onclick="speakOne('호텔', 'Tell me about the hotels in your country. What do they usually look like? Where are they located, and what kind of facilities do they offer to guests?','s24-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me about the hotels in your country. What do they usually look like? Where are they located, and what kind of facilities do they offer to guests?</span>
+  </button>
+  <button class="q-btn" id="s24-q1" onclick="speakOne('호텔', 'Tell me what you typically do when you go to a hotel. What do you do first, second, et cetera? When do you usually stay at hotels?','s24-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Tell me what you typically do when you go to a hotel. What do you do first, second, et cetera? When do you usually stay at hotels?</span>
+  </button>
+  <button class="q-btn" id="s24-q2" onclick="speakOne('호텔', 'People often have memories of especially beautiful and interesting hotels. Tell me about a hotel that you remember for some reason. Describe it in as much detail as possible.','s24-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">People often have memories of especially beautiful and interesting hotels. Tell me about a hotel that you remember for some reason. Describe it in as much detail as possible.</span>
+  </button>
+  <button class="q-btn" id="s24-q3" onclick="speakOne('호텔', 'When was the last time you stayed in a hotel? Tell me the whole story from start to finish.','s24-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When was the last time you stayed in a hotel? Tell me the whole story from start to finish.</span>
+  </button>
+  <button class="q-btn" id="s24-q4" onclick="speakOne('호텔', 'I\'m sorry but there is a problem that you need to solve. You found out that you left your wallet at the hotel. Call the hotel, explain the situation to a manager, and ask him or her to hold it.','s24-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">I'm sorry but there is a problem that you need to solve. You found out that you left your wallet at the hotel. Call the hotel, explain the situation to a manager, and ask him or her to hold it.</span>
+  </button>
+  <button class="q-btn" id="s24-q5" onclick="speakOne('호텔', 'I\'d like to give you a situation and ask you to act it out. You are visiting a new city and need a hotel room for the night. Call a hotel and ask three or four questions to find out about its rooms and services.','s24-q5')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">I'd like to give you a situation and ask you to act it out. You are visiting a new city and need a hotel room for the night. Call a hotel and ask three or four questions to find out about its rooms and services.</span>
+  </button>
+  <button class="q-btn" id="s24-q6" onclick="speakOne('호텔', 'I\'m sorry but there is a problem which I need you to resolve. You have learned that there are no rooms available in this hotel. Call your travel companions, describe the situation and propose alternative solutions.','s24-q6')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">I'm sorry but there is a problem which I need you to resolve. You have learned that there are no rooms available in this hotel. Call your travel companions, describe the situation and propose alternative solutions.</span>
+  </button>
+</div>
+<div class="card" id="card-s25">
+  <div class="card-header">
+    <div class="card-header-left"><span class="card-title">공연 / 경기</span><span class="card-sub">Performances & Games</span></div>
+    <button class="section-play-btn" id="sp-s25" data-si="25" data-ids="[&quot;s25-q0&quot;, &quot;s25-q1&quot;, &quot;s25-q2&quot;, &quot;s25-q3&quot;, &quot;s25-q4&quot;, &quot;s25-q5&quot;]" data-title="공연 / 경기" onclick="playSectionBtn(this)" title="이 섹션 전체 재생">&#9654;</button>
+  </div>
+  <button class="q-btn" id="s25-q0" onclick="speakOne('공연 / 경기', 'Could you think back to a particularly memorable time when you heard live music? Describe that experience in detail. When was it? Where were you? Who were you with? What made that performance so memorable?','s25-q0')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Could you think back to a particularly memorable time when you heard live music? Describe that experience in detail. When was it? Where were you? Who were you with? What made that performance so memorable?</span>
+  </button>
+  <button class="q-btn" id="s25-q1" onclick="speakOne('공연 / 경기', 'What do you usually do before you go to a live performance or sports game? What do you do after? Please tell me about your typical day when you go to a live performance or sports game.','s25-q1')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">What do you usually do before you go to a live performance or sports game? What do you do after? Please tell me about your typical day when you go to a live performance or sports game.</span>
+  </button>
+  <button class="q-btn" id="s25-q2" onclick="speakOne('공연 / 경기', 'When did you first become interested in music? What kind of music did you like first? Tell me how your interest in music developed from your childhood until today.','s25-q2')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">When did you first become interested in music? What kind of music did you like first? Tell me how your interest in music developed from your childhood until today.</span>
+  </button>
+  <button class="q-btn" id="s25-q3" onclick="speakOne('공연 / 경기', 'What new electronic gadgets or equipment are people who like music interested in these days? What new products excite them and why?','s25-q3')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">What new electronic gadgets or equipment are people who like music interested in these days? What new products excite them and why?</span>
+  </button>
+  <button class="q-btn" id="s25-q4" onclick="speakOne('공연 / 경기', 'I\'d like to give you a situation and ask you to act it out. You want to get two tickets to see a performance during your vacation. Call the box office and ask three or four questions to get tickets.','s25-q4')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">I'd like to give you a situation and ask you to act it out. You want to get two tickets to see a performance during your vacation. Call the box office and ask three or four questions to get tickets.</span>
+  </button>
+  <button class="q-btn" id="s25-q5" onclick="speakOne('공연 / 경기', 'Has this ever happened to you? Have you ever bought tickets or made reservations but something went wrong? Tell me about that experience and what you did to resolve it.','s25-q5')">
+    <div class="play-icon">&#9654;</div>
+    <span class="q-text">Has this ever happened to you? Have you ever bought tickets or made reservations but something went wrong? Tell me about that experience and what you did to resolve it.</span>
+  </button>
+</div>
+</div>
+
+<p class="footer">Web Speech API · ko-KR &amp; en-US</p>
+
+<script>
+var ALL_IDS    = ["s0-q0", "s0-q1", "s0-q2", "s1-q0", "s1-q1", "s1-q2", "s1-q3", "s1-q4", "s1-q5", "s2-q0", "s2-q1", "s2-q2", "s2-q3", "s2-q4", "s3-q0", "s3-q1", "s3-q2", "s3-q3", "s3-q4", "s3-q5", "s3-q6", "s3-q7", "s4-q0", "s4-q1", "s4-q2", "s5-q0", "s5-q1", "s5-q2", "s5-q3", "s5-q4", "s6-q0", "s6-q1", "s6-q2", "s7-q0", "s7-q1", "s7-q2", "s7-q3", "s8-q0", "s8-q1", "s8-q2", "s8-q3", "s8-q4", "s9-q0", "s9-q1", "s9-q2", "s10-q0", "s10-q1", "s10-q2", "s10-q3", "s10-q4", "s11-q0", "s11-q1", "s11-q2", "s11-q3", "s11-q4", "s12-q0", "s12-q1", "s12-q2", "s12-q3", "s12-q4", "s13-q0", "s13-q1", "s13-q2", "s13-q3", "s13-q4", "s13-q5", "s13-q6", "s14-q0", "s14-q1", "s14-q2", "s14-q3", "s15-q0", "s15-q1", "s15-q2", "s16-q0", "s16-q1", "s17-q0", "s17-q1", "s17-q2", "s17-q3", "s18-q0", "s18-q1", "s19-q0", "s19-q1", "s19-q2", "s19-q3", "s19-q4", "s19-q5", "s19-q6", "s19-q7", "s19-q8", "s19-q9", "s20-q0", "s20-q1", "s20-q2", "s20-q3", "s20-q4", "s21-q0", "s21-q1", "s21-q2", "s21-q3", "s21-q4", "s22-q0", "s22-q1", "s22-q2", "s22-q3", "s22-q4", "s23-q0", "s23-q1", "s23-q2", "s23-q3", "s23-q4", "s24-q0", "s24-q1", "s24-q2", "s24-q3", "s24-q4", "s24-q5", "s24-q6", "s25-q0", "s25-q1", "s25-q2", "s25-q3", "s25-q4", "s25-q5"];
+var ALL_TEXTS  = ["Tell me about some places people in your country like to spend their free time.", "Describe for me how your free time has changed over time.", "Tell me about the last time you had some free time.", "Tell me about the current trend of enjoying coffee where you live.", "Describe your favorite coffee shop.", "When was the last time you went to a cafe?", "Tell me about how the coffee shops have changed over the years.", "Call the new cafe and ask 3 or 4 questions.", "Explain the wrong order to the staff at a cafe and ask them to correct it.", "Ask your friend three or four questions about the movie to see.", "The movie is boring and you want to leave. Explain the problem to your friend and come up with two or three alternatives.", "Have you ever tried to watch a boring movie? Tell me this experience.", "Have you ever made plans for other things but had to cancel because of something that happened unexpectedly? Tell me everything about it.", "Tell me a specific story about your favorite actor that you heard about in the news.", "Think about a specific modern appliance or device that people consider as useful or convenient.", "Tell me about a time you learned about an exciting new product.", "Think about a time when you experienced a technology problem.", "How has that technology changed over time?", "How have these technology changes affected your daily tasks or improve your professional skills?", "Pick one industry in your country and tell me all about it.", "You are writing a report on the technology industry. Call your friend and ask three or four questions.", "Tell me about a technology issue.", "Tell me about the weather at where you are today.", "How has the weather in your country changed over time?", "Tell me about an experience you had when severe weather created some kind of problems.", "Describe in detail how you started to eat healthy.", "After purchasing a food item at the store, you have discovered that something is wrong with the item. Call the store and explain the problem.", "When was the last time you had some healthy food?", "How has food shopping changed over the last 20 years?", "Tell me about the food scare stories you heard about or read about.", "Tell me about something you have done to try to improve your health.", "Different generations have different views on what is healthy.", "Describe a recent event in your area that involved health issues.", "Tell me about the kinds of places you go for different appointments.", "Tell me about an appointment that you remember for some reason.", "Call the doctor's office and ask three or four questions.", "Call and reschedule your appointment at the clinic.", "Call the customer service department of the mall and complain about the late delivery.", "Tell me about the kinds of clothes that were popular when you were younger. How are they different from what is popular now?", "Did anything funny or exciting happen while you were shopping?", "Talk about the most significant changes in shopping over the years.", "What kinds of products and services do you hear shoppers talk about the most these days?", "Tell me about a recent news article you read. What was it about?", "How has the newspaper changed over the years?", "What do you think is the main difference between SNS and blogs? Can you explain with examples?", "When did you first become interested in surfing the Internet?", "You have tried to check out that website, but it is not available. Call your friend, explain the situation and make some suggestions to solve the problem.", "Have you ever had any trouble on the Internet?", "How have social networking services changed the way you use the Internet? Do you think they have a big impact on your life?", "How did you use the Internet to get a project done in the past?", "Tell me about the banks in your country.", "Talk about a problem you personally had at a bank.", "You need to open a new bank account. Call the bank and ask the teller three or four questions.", "I just got my credit card, but found out that there is a problem with it. Call the bank.", "Tell me about a bank you remember from your childhood. How was it different from banks today?", "I'd like to know about how recycling is practiced in your country. What do people specifically do? Tell me how things are recycled.", "Describe what the attitude was toward recycling when you were a child. Did people recycle then? What were people's views on recycling at that time and how have they changed over the years?", "What recent news have you heard about recycling or environmental conservation efforts? How do you think these developments will impact your community?", "Suppose that you have moved into a new building. Call the manager of the building and ask three or four questions about recycling.", "Describe a specific time in which you had trouble with recycling. Describe what happened from beginning to end.", "Talk about your favorite room in your home. Why do you like that room? What do you normally do there?", "Tell me about the house you used to live in when you were young. What are the differences and the similarities? Give me all the details.", "Think about one of your past home improvement projects. Why did you do that project? How did your home look before and after? Talk about the entire process.", "Someone in your family is going on a vacation, and you have agreed to take care of their responsibilities at home. Call your relative and ask three or four questions to get all the information you need.", "When you arrive at your relative's house, the door is locked and the key is not where it is supposed to be. Call your relative's hotel and leave a message explaining the situation. Give two or three options to resolve the problem.", "There are always problems which happen in any home. Tell me about some problems or issues that have happened in your home.", "Many homes today are equipped with new appliances or electronic devices. What are some of these? How have they changed household responsibilities?", "Describe two different friends or family members in detail. Tell me about the similarities they have in common and the differences between them.", "Talk about a time when you visited a friend or a family member. What was memorable about that visit? Tell me everything from beginning to end.", "Tell me about the last gathering or celebration you attended. When and where was it, and who was there? What made it memorable?", "When you get together with friends or family, what are some of the topics or interests you discuss? How do these things affect your life?", "You have been invited to a holiday party. Call your friend and ask when the party starts and what you should bring. Ask two or three more questions about the party.", "You just had a car accident and you think you are going to be late for the holiday party. Call your friend, explain the situation, and give two or three alternatives.", "Tell me about a time when you really wanted to go to a party or a celebration, but for some reason you could not go. Tell me the whole story from beginning to end.", "You want to meet up with your friend on the weekend. Call your friend and ask two or three questions about what you can do together and when you want to meet.", "You are unable to meet your friend at the time and place that was agreed upon. Call your friend and give three or four alternatives to address the problem.", "Tell me about how people typically get around in your country. Do people drive or use trains or buses?", "Tell me about a transportation problem that you once faced. Tell me everything that happened and what you did to deal with it.", "What progress have you seen in the public transportation system and how is it affecting people's lives?", "You are driving your car and have car trouble. Go to the nearest service station and ask three or four questions to get your car fixed.", "You need to rent a car for about a week. Call the rental agency and ask three or four questions to get all the information you need.", "You want to rent a specific kind of car, but none are available. Call the manager, explain the situation, and offer several alternatives to solve the problem.", "What is the most memorable tourist attraction in your country or city? Why is it so unforgettable?", "Tell me about some of the trips that you took in your youth. Where did you go?", "Can you describe one of the countries or cities you have visited internationally? What does it look like and what are the people like?", "Think about a time when your travel plans did not work out as expected. What happened and how was the situation resolved?", "Have you ever bought tickets or made reservations but something went wrong? Tell me about that experience.", "How has traveling to other countries changed over the years? Is it easier or more difficult than before?", "International travel has changed significantly. How was traveling abroad in the past compared to today? What are the reasons it has become more accessible?", "Why has traveling abroad become so popular? What do people hope to gain or experience when they visit a foreign country?", "You have booked a non-refundable plane ticket but something has happened that prevents you from going. Call the travel agent and offer some alternatives.", "The travel agent informs you that the vacation you want is not available for the dates you want. Call your friend, leave a message explaining the situation and offer two or three alternatives.", "Tell me about the last gathering or celebration you attended. When and where was it, and what made it memorable?", "Have you ever had an unexpected or memorable experience during a celebration? Tell me everything that happened from beginning to end.", "How have celebrations and gatherings changed since you were a child? What events are more popular today?", "Tell me about some similarities and differences between celebrations in small towns and in big cities in your country.", "Was there a discussion among people related to organizing an event recently? What was the issue or difficulty being discussed?", "Describe your favorite restaurant that has an ethnic or international menu. Tell me everything about it in detail.", "When was the last time you ate at a restaurant with an international menu? Tell me the entire story of that visit.", "Tell me about a memorable meal you had with family, friends, or co-workers. Who were you with and what did you eat?", "Talk about your experience at a chain restaurant and a local restaurant. What was the biggest difference?", "Tell me about an unexpected experience you had at a restaurant. Tell me everything about the incident.", "You indicated in the survey that you stay at home for vacations. Who are the people you would like to see and spend time with on your vacation?", "Describe some of the things that you would like to do with people you visit or see during your vacation.", "Could you tell me about an unusual, unexpected, or satisfying experience you had while at home on vacation? Tell me all the details. What happened? Who was involved? And why was this experience so memorable?", "How do most people spend their vacation in your country? How does that compare to the way people spent their vacation when you were growing up? How have things changed and why?", "Experts state that vacations are important for every individual. Report for me the important benefits of vacation time to a person's health, relationships and personal growth.", "Could you tell me about the geographical features of your country? Are there many mountains or beaches? Please explain in as much detail as you can.", "Have you ever been to a geographically unique area in your country? Where was it? What did the place look like? What did you see there?", "People often have memorable and moving experiences when they explore their country's geography. Tell me the story of a memorable time you had while visiting a natural place in your country.", "How has your country changed in the past decade? Choose one area of change and provide a lot of details about urban development, tourism, or any other area.", "Tell me in detail about changes you have observed concerning the relationship between your country and other countries. The change might be related to the economy, sports, arts, culture or politics.", "Tell me about the hotels in your country. What do they usually look like? Where are they located, and what kind of facilities do they offer to guests?", "Tell me what you typically do when you go to a hotel. What do you do first, second, et cetera? When do you usually stay at hotels?", "People often have memories of especially beautiful and interesting hotels. Tell me about a hotel that you remember for some reason. Describe it in as much detail as possible.", "When was the last time you stayed in a hotel? Tell me the whole story from start to finish.", "I'm sorry but there is a problem that you need to solve. You found out that you left your wallet at the hotel. Call the hotel, explain the situation to a manager, and ask him or her to hold it.", "I'd like to give you a situation and ask you to act it out. You are visiting a new city and need a hotel room for the night. Call a hotel and ask three or four questions to find out about its rooms and services.", "I'm sorry but there is a problem which I need you to resolve. You have learned that there are no rooms available in this hotel. Call your travel companions, describe the situation and propose alternative solutions.", "Could you think back to a particularly memorable time when you heard live music? Describe that experience in detail. When was it? Where were you? Who were you with? What made that performance so memorable?", "What do you usually do before you go to a live performance or sports game? What do you do after? Please tell me about your typical day when you go to a live performance or sports game.", "When did you first become interested in music? What kind of music did you like first? Tell me how your interest in music developed from your childhood until today.", "What new electronic gadgets or equipment are people who like music interested in these days? What new products excite them and why?", "I'd like to give you a situation and ask you to act it out. You want to get two tickets to see a performance during your vacation. Call the box office and ask three or four questions to get tickets.", "Has this ever happened to you? Have you ever bought tickets or made reservations but something went wrong? Tell me about that experience and what you did to resolve it."];
+var ALL_TITLES = ["\uc790\uc720\uc2dc\uac04", "\uc790\uc720\uc2dc\uac04", "\uc790\uc720\uc2dc\uac04", "\uce74\ud398 \uac00\uae30", "\uce74\ud398 \uac00\uae30", "\uce74\ud398 \uac00\uae30", "\uce74\ud398 \uac00\uae30", "\uce74\ud398 \uac00\uae30", "\uce74\ud398 \uac00\uae30", "\uc601\ud654 / TV \uc2dc\uccad", "\uc601\ud654 / TV \uc2dc\uccad", "\uc601\ud654 / TV \uc2dc\uccad", "\uc601\ud654 / TV \uc2dc\uccad", "\uc601\ud654 / TV \uc2dc\uccad", "\uae30\uc220 1 & 2", "\uae30\uc220 1 & 2", "\uae30\uc220 1 & 2", "\uae30\uc220 1 & 2", "\uae30\uc220 1 & 2", "\uae30\uc220 1 & 2", "\uae30\uc220 1 & 2", "\uae30\uc220 1 & 2", "\ub0a0\uc528", "\ub0a0\uc528", "\ub0a0\uc528", "\uc2dd\ud488", "\uc2dd\ud488", "\uc2dd\ud488", "\uc2dd\ud488", "\uc2dd\ud488", "\uac74\uac15", "\uac74\uac15", "\uac74\uac15", "\uc608\uc57d", "\uc608\uc57d", "\uc608\uc57d", "\uc608\uc57d", "\ud328\uc158 / \uc1fc\ud551", "\ud328\uc158 / \uc1fc\ud551", "\ud328\uc158 / \uc1fc\ud551", "\ud328\uc158 / \uc1fc\ud551", "\ud328\uc158 / \uc1fc\ud551", "\uc2e0\ubb38 / \ube14\ub85c\uadf8", "\uc2e0\ubb38 / \ube14\ub85c\uadf8", "\uc2e0\ubb38 / \ube14\ub85c\uadf8", "\uc778\ud130\ub137", "\uc778\ud130\ub137", "\uc778\ud130\ub137", "\uc778\ud130\ub137", "\uc778\ud130\ub137", "\uc740\ud589", "\uc740\ud589", "\uc740\ud589", "\uc740\ud589", "\uc740\ud589", "\uc7ac\ud65c\uc6a9", "\uc7ac\ud65c\uc6a9", "\uc7ac\ud65c\uc6a9", "\uc7ac\ud65c\uc6a9", "\uc7ac\ud65c\uc6a9", "\uc9d1", "\uc9d1", "\uc9d1", "\uc9d1", "\uc9d1", "\uc9d1", "\uc9d1", "\uac00\uc871 / \ud734\uc77c", "\uac00\uc871 / \ud734\uc77c", "\uac00\uc871 / \ud734\uc77c", "\uac00\uc871 / \ud734\uc77c", "\ud30c\ud2f0", "\ud30c\ud2f0", "\ud30c\ud2f0", "\uc57d\uc18d", "\uc57d\uc18d", "\uad50\ud1b5", "\uad50\ud1b5", "\uad50\ud1b5", "\uad50\ud1b5", "\ub80c\ud130\uce74", "\ub80c\ud130\uce74", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\uc5ec\ud589", "\ubaa8\uc784", "\ubaa8\uc784", "\ubaa8\uc784", "\ubaa8\uc784", "\ubaa8\uc784", "\uc74c\uc2dd\uc810", "\uc74c\uc2dd\uc810", "\uc74c\uc2dd\uc810", "\uc74c\uc2dd\uc810", "\uc74c\uc2dd\uc810", "\uc9d1\uc5d0\uc11c \ubcf4\ub0b4\ub294 \ud734\uac00", "\uc9d1\uc5d0\uc11c \ubcf4\ub0b4\ub294 \ud734\uac00", "\uc9d1\uc5d0\uc11c \ubcf4\ub0b4\ub294 \ud734\uac00", "\uc9d1\uc5d0\uc11c \ubcf4\ub0b4\ub294 \ud734\uac00", "\uc9d1\uc5d0\uc11c \ubcf4\ub0b4\ub294 \ud734\uac00", "\uc9c0\ud615 / \ud558\uc774\ud0b9", "\uc9c0\ud615 / \ud558\uc774\ud0b9", "\uc9c0\ud615 / \ud558\uc774\ud0b9", "\uc9c0\ud615 / \ud558\uc774\ud0b9", "\uc9c0\ud615 / \ud558\uc774\ud0b9", "\ud638\ud154", "\ud638\ud154", "\ud638\ud154", "\ud638\ud154", "\ud638\ud154", "\ud638\ud154", "\ud638\ud154", "\uacf5\uc5f0 / \uacbd\uae30", "\uacf5\uc5f0 / \uacbd\uae30", "\uacf5\uc5f0 / \uacbd\uae30", "\uacf5\uc5f0 / \uacbd\uae30", "\uacf5\uc5f0 / \uacbd\uae30", "\uacf5\uc5f0 / \uacbd\uae30"];
+
+var cur = null;
+var queue = [];
+var queueIdx = 0;
+var isQueue = false;
+var curSectionId = null;
+
+// ── iOS Safari 우회: AudioContext unlock ──────────────────────────
+var audioCtx = null;
+function unlockAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var buf = audioCtx.createBuffer(1,1,22050);
+    var src = audioCtx.createBufferSource();
+    src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
+  } catch(e){}
+}
+// iOS: speechSynthesis 큐가 멈추는 버그 방지 (resume 주기적 호출)
+var resumeTimer = null;
+function startResumeTimer() {
+  stopResumeTimer();
+  resumeTimer = setInterval(function(){
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+  }, 5000);
+}
+function stopResumeTimer() {
+  if (resumeTimer) { clearInterval(resumeTimer); resumeTimer = null; }
+}
+// ─────────────────────────────────────────────────────────────────
+
+function getRate(){ return parseFloat(document.getElementById('rate').value); }
+function krOn(){ return document.getElementById('kr-on').checked; }
+
+function setProgress(idx, total) {
+  if (total > 0) document.getElementById('progress-fill').style.width = Math.round((idx/total)*100)+'%';
+}
+
+function clearHighlight(){
+  if(cur){
+    var b=document.getElementById(cur);
+    if(b){b.classList.remove('playing');b.querySelector('.play-icon').innerHTML='&#9654;';}
+    cur=null;
+  }
+}
+function clearSectionBtn(){
+  if(curSectionId!==null){
+    var sb=document.getElementById('sp-s'+curSectionId);
+    if(sb){sb.classList.remove('playing');sb.innerHTML='&#9654;';}
+    curSectionId=null;
+  }
+}
+function resetUI(){
+  clearHighlight(); clearSectionBtn();
+  document.getElementById('all-play-btn').classList.remove('playing');
+  document.getElementById('all-icon').innerHTML='&#9654;';
+  document.getElementById('stop-btn').style.display='none';
+  document.getElementById('progress-wrap').style.display='none';
+  document.getElementById('progress-fill').style.width='0%';
+  stopResumeTimer();
+}
+
+function stopAll(){
+  window.speechSynthesis.cancel();
+  isQueue=false; queue=[]; queueIdx=0;
+  resetUI();
+}
+
+// ── 핵심: iOS에서 연속 발화를 위한 speak 래퍼 ──────────────────
+function doSpeak(text, lang, onEnd) {
+  // cancel 후 약간 딜레이를 줘야 iOS에서 안정적으로 동작
+  window.speechSynthesis.cancel();
+  setTimeout(function(){
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    u.rate = getRate();
+    u.onend = function(){ if(onEnd) onEnd(); };
+    u.onerror = function(e){
+      // "interrupted"는 정상 cancel이므로 무시, 나머지만 onEnd 호출
+      if(e.error !== 'interrupted' && onEnd) onEnd();
+    };
+    window.speechSynthesis.speak(u);
+  }, 50);
+}
+// ─────────────────────────────────────────────────────────────────
+
+// 개별 버튼 탭
+function speakOne(krTitle, enText, key){
+  unlockAudio();
+  stopAll();
+  cur = key;
+  var btn = document.getElementById(key);
+  if(btn){ btn.classList.add('playing'); btn.querySelector('.play-icon').innerHTML='&#9646;'; }
+  document.getElementById('stop-btn').style.display='inline-block';
+
+  function playEn(){
+    doSpeak(enText,'en-US',function(){
+      if(btn){ btn.classList.remove('playing'); btn.querySelector('.play-icon').innerHTML='&#9654;'; }
+      if(cur===key) cur=null;
+      document.getElementById('stop-btn').style.display='none';
+      stopResumeTimer();
+    });
+  }
+  if(krOn() && krTitle){
+    doSpeak(krTitle,'ko-KR', function(){ if(cur===key) playEn(); });
+  } else {
+    playEn();
+  }
+  startResumeTimer();
+}
+
+// 큐 재생
+function playQueue(){
+  if(!isQueue || queueIdx>=queue.length){
+    resetUI(); return;
+  }
+  var item = queue[queueIdx];
+  setProgress(queueIdx, queue.length);
+  queueIdx++;
+
+  clearHighlight();
+  cur = item.id;
+  var btn = document.getElementById(item.id);
+  if(btn){ btn.classList.add('playing'); btn.querySelector('.play-icon').innerHTML='&#9646;'; }
+
+  var prevTitle = queueIdx>=2 ? queue[queueIdx-2].krTitle : null;
+  var sameSection = prevTitle && prevTitle===item.krTitle;
+
+  function playEn(){
+    doSpeak(item.text,'en-US',function(){
+      if(btn){ btn.classList.remove('playing'); btn.querySelector('.play-icon').innerHTML='&#9654;'; }
+      if(cur===item.id) cur=null;
+      if(isQueue) playQueue();
+    });
+  }
+  if(krOn() && item.krTitle && !sameSection){
+    doSpeak(item.krTitle,'ko-KR', function(){ if(isQueue) playEn(); });
+  } else {
+    playEn();
+  }
+}
+
+function startQueue(items, sectionIdx){
+  unlockAudio();
+  stopAll();
+  queue=items; queueIdx=0; isQueue=true;
+  curSectionId=(sectionIdx!==null && sectionIdx!==undefined) ? sectionIdx : null;
+  if(curSectionId!==null){
+    var sb=document.getElementById('sp-s'+curSectionId);
+    if(sb){ sb.classList.add('playing'); sb.innerHTML='&#9646;'; }
+  } else {
+    document.getElementById('all-play-btn').classList.add('playing');
+    document.getElementById('all-icon').innerHTML='&#9646;';
+    document.getElementById('progress-wrap').style.display='block';
+  }
+  document.getElementById('stop-btn').style.display='inline-block';
+  startResumeTimer();
+  playQueue();
+}
+
+function playAll(){
+  var items=[];
+  for(var i=0;i<ALL_IDS.length;i++){
+    items.push({id:ALL_IDS[i], text:ALL_TEXTS[i], krTitle:ALL_TITLES[i]});
+  }
+  startQueue(items, null);
+}
+
+function playSectionBtn(btn){
+  var si=parseInt(btn.getAttribute('data-si'));
+  var ids=JSON.parse(btn.getAttribute('data-ids').replace(/&quot;/g,'"'));
+  var title=btn.getAttribute('data-title');
+  var items=[];
+  for(var i=0;i<ids.length;i++){
+    var el=document.getElementById(ids[i]);
+    if(el){ items.push({id:ids[i], text:el.querySelector('.q-text').textContent, krTitle:title}); }
+  }
+  startQueue(items, si);
+}
+</script>
+</body>
+</html>
